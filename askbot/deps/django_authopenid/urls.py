@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 from django.conf.urls.defaults import patterns, url
-from django.utils.translation import ugettext as _
 from django.conf import settings
 
 if getattr(settings, "ASKBOT_TRANSLATE_URL", False):
