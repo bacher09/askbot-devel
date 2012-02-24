@@ -206,7 +206,7 @@ body.user-messages {
 .content-wrapper {
   /* wrapper positioning class */
 
-  width: 960px;
+  width: 1060px;
   margin: auto;
   position: relative;
 }
@@ -286,7 +286,7 @@ body.user-messages {
 [class^="icon-"], [class*=" icon-"] {
   display: inline-block;
   width: 40px;
-  height: 40px;
+  height: 30px;
   line-height: 14px;
   vertical-align: text-top;
   background-repeat: no-repeat;
@@ -334,7 +334,7 @@ body.user-messages {
   background: -51px -36px url(../images/sprites.png) no-repeat;
 }
 #secondaryHeader #scopeWrapper {
-  width: 688px;
+  width: 788px;
   float: left;
 }
 #secondaryHeader #scopeWrapper a {
@@ -346,7 +346,7 @@ body.user-messages {
   color: #5a5a4b;
   height: 55px;
   line-height: 55px;
-  margin-left: 24px;
+  margin-left: 11px;
 }
 #secondaryHeader #scopeWrapper .on {
   background: url(../images/scopearrow.png) no-repeat center bottom;
@@ -456,7 +456,7 @@ body.anon #searchBar .searchInputCancelable {
 }
 /* ----- Content layout, check two_column_body.html or one_column_body.html ----- */
 #ContentLeft {
-  width: 730px;
+  width: 830px;
   float: left;
   position: relative;
   padding-bottom: 10px;
@@ -468,13 +468,14 @@ body.anon #searchBar .searchInputCancelable {
 }
 #ContentFull {
   float: left;
-  width: 960px;
+  width: 1060px;
 }
 /* ----- Sidebar Widgets Box, check main_page/sidebar.html or question/sidebar.html ----- */
 .box {
   background: #fff;
   padding: 4px 0px 10px 0px;
-  width: 200px;
+  margin-top: 20px;
+  width: 250px;
   /* widgets for question template */
 
   /* notify by email box */
@@ -559,7 +560,7 @@ body.anon #searchBar .searchInputCancelable {
   color: #4a757f;
   font-weight: bold;
   font-size: 12px;
-  width: 30px;
+  width: 70px;
   height: 27px;
   margin-top: -2px;
   cursor: pointer;
@@ -811,7 +812,7 @@ ul#searchTags {
   border-bottom: 1px solid #DDDBCE;
   margin-bottom: 1px;
   overflow: hidden;
-  width: 710px;
+  width: 800px;
   float: left;
   background: url(../images/summary-background.png) repeat-x;
 }
@@ -858,8 +859,8 @@ ul#searchTags {
 .short-summary .counts .answers div,
 .short-summary .counts .favorites div {
   margin-top: 3px;
-  font-size: 14px;
-  line-height: 14px;
+  font-size: 11px;
+  line-height: 12px;
   color: #646464;
 }
 .short-summary .tags {
@@ -1162,7 +1163,8 @@ ul#related-tags li {
 }
 #fmask {
   margin-bottom: 30px;
-  width: 100%;
+  width: 90%;
+  margin-left: 80px;
 }
 #askFormBar {
   display: inline-block;
@@ -1389,7 +1391,7 @@ ul#related-tags li {
 }
 .question-page .question-content {
   float: right;
-  width: 682px;
+  width: 782px;
   margin-bottom: 10px;
 }
 .question-page #question-table {
@@ -1399,7 +1401,7 @@ ul#related-tags li {
 .question-page #question-table, .question-page .answer-table {
   margin: 6px 0 6px 0;
   border-spacing: 0px;
-  width: 670px;
+  width: 760px;
   padding-right: 10px;
 }
 .question-page .answer-table {
@@ -1834,7 +1836,7 @@ ul#related-tags li {
 .question-page .tabBar-answer {
   margin-bottom: 15px;
   padding-left: 7px;
-  width: 723px;
+  width: 823px;
   margin-top: 10px;
 }
 .question-page .answer .vote-buttons {
@@ -2020,7 +2022,8 @@ ul#related-tags li {
   font-family: Arial;
   height: 26px;
   margin: 5px 0px;
-  width: 100px;
+  /* width:100px; */
+
   cursor: pointer;
   border-radius: 4px;
   -ms-border-radius: 4px;
