@@ -5,6 +5,7 @@ from askbot import const
 from django.utils.translation import ugettext_lazy as _
 from django.utils.translation import ungettext_lazy
 from django.utils.text import get_text_list
+from django.utils.encoding import smart_unicode
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django_countries import countries
@@ -113,7 +114,7 @@ class TitleField(forms.CharField):
                 askbot_settings.MIN_TITLE_LENGTH
             ) % askbot_settings.MIN_TITLE_LENGTH
             raise forms.ValidationError(msg)
-        encoded_value = value.encode('utf-8')
+        encoded_value = smart_unicode(value)
         if len(value) == len(encoded_value):
             if len(value) > self.max_length:
                 raise forms.ValidationError(
@@ -122,7 +123,7 @@ class TitleField(forms.CharField):
                         '%d characters'
                     ) % self.max_length
                 )
-        elif encoded_value > self.max_length:
+        elif len(encoded_value) > self.max_length:
             raise forms.ValidationError(
                 _(
                     'The title is too long, maximum allowed size is '
