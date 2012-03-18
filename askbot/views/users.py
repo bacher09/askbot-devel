@@ -127,7 +127,7 @@ def user_moderate(request, subject, context):
     """
     moderator = request.user
 
-    if not moderator.can_moderate_user(subject):
+    if moderator.is_authenticated() and not moderator.can_moderate_user(subject):
         raise Http404
 
     user_rep_changed = False
@@ -354,8 +354,16 @@ def user_stats(request, user, context):
     for award in user_awards:
         # Fetch content object
         if award.content_type_id == post_type.id:
-            award.content_object = awarded_posts_map[award.object_id]
-            award.content_object_is_post = True
+            #here we go around a possibility of awards
+            #losing the content objects when the content
+            #objects are deleted for some reason
+            awarded_post = awarded_posts_map.get(award.object_id, None)
+            if awarded_post is not None:
+                #protect from awards that are associated with deleted posts
+                award.content_object = awarded_post
+                award.content_object_is_post = True
+            else:
+                award.content_object_is_post = False
         else:
             award.content_object_is_post = False
 
@@ -690,8 +698,8 @@ def user_reputation(request, user, context):
         'active_tab':'users',
         'page_class': 'user-profile-page',
         'tab_name': 'reputation',
-        'tab_description': _('user reputation in the community'),
-        'page_title': _('profile - user reputation'),
+        'tab_description': _('user karma'),
+        'page_title': _("Profile - User's Karma"),
         'reputation': reputes,
         'reps': reps
     }

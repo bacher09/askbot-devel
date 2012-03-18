@@ -2034,9 +2034,17 @@ ul#related-tags li {
         }
     }
 
+    .answer-img-accept {
+        background: url(../images/vote-accepted.png);
+        width: 23px;
+        height: 23px;
+    }
+
+    .accepted-answer .answer-img-accept,
     .answer-img-accept:hover {
         background: url(../images/vote-accepted-on.png)
     }
+
     .answer-body a {
         color:@link;
     }
@@ -3350,4 +3358,28 @@ pre.prettyprint { clear:both;padding: 3px; border: 0px solid #888; }
 
 #leading-sidebar {
     float: left;
+}
+
+/* language-specific fixes */
+body.lang-es {
+    #searchBar {
+        width: 398px;
+        .searchInput {
+            width: 337px;
+        }
+        .searchInputCancelable {
+            width: 302px;
+        }
+    }
+}
+body.anon.lang-es {
+    #searchBar {
+        width: 485px;
+        .searchInput {
+            width: 425px;
+        }
+        .searchInputCancelable {
+            width: 390px;
+        }
+    }
 }

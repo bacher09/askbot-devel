@@ -108,7 +108,9 @@ def process_vote(user = None, vote_direction = None, post = None):
     right now they are kind of cryptic - "status", "count"
     """
     if user.is_anonymous():
-        raise exceptions.PermissionDenied(_('anonymous users cannot vote'))
+        raise exceptions.PermissionDenied(_(
+            'Sorry, anonymous users cannot vote'
+        ))
 
     user.assert_can_vote_for_post(post = post, direction = vote_direction)
     vote = user.get_old_vote_for_post(post)
@@ -286,10 +288,10 @@ def vote(request, id):
         elif vote_type in ['7.6', '8.6']:
             #flag question or answer
             if vote_type == '7.6':
-                post = get_object_or_404(models.Question, id=id)
+                post = get_object_or_404(models.Post, id=id)
             if vote_type == '8.6':
                 id = request.POST.get('postId')
-                post = get_object_or_404(models.Answer, id=id)
+                post = get_object_or_404(models.Post, id=id)
 
             request.user.flag_post(post, cancel_all = True)
 
@@ -333,8 +335,11 @@ def vote(request, id):
                             and user.email_isvalid == False:
 
                             response_data['message'] = \
-                                    _('subscription saved, %(email)s needs validation, see %(details_url)s') \
-                                    % {'email':user.email,'details_url':reverse('faq') + '#validate'}
+                                    _(
+                                        'Your subscription is saved, but email address '
+                                        '%(email)s needs to be validated, please see '
+                                        '<a href="%(details_url)s">more details here</a>'
+                                    ) % {'email':user.email,'details_url':reverse('faq') + '#validate'}
 
                     subscribed = user.subscribe_for_followed_question_alerts()
                     if subscribed:
@@ -354,6 +359,13 @@ def vote(request, id):
         else:
             response_data['success'] = 0
             response_data['message'] = u'Request mode is not supported. Please try again.'
+
+        if vote_type not in (1, 2, 4, 5, 6, 11, 12):
+            #favorite or subscribe/unsubscribe
+            #upvote or downvote question or answer - those
+            #are handled within user.upvote and user.downvote
+            post = models.Post.objects.get(id = id)
+            post.thread.invalidate_cached_data()
 
         data = simplejson.dumps(response_data)
 

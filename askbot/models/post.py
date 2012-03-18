@@ -210,7 +210,7 @@ class PostManager(BaseQuerySetManager):
         for cm in comments:
             post_map[cm.parent_id].append(cm)
         for post in for_posts:
-            post._cached_comments = post_map[post.id]
+            post.set_cached_comments(post_map[post.id])
 
         # Old Post.get_comment(self, visitor=None) method:
         #        if visitor.is_anonymous():
@@ -466,13 +466,15 @@ class Post(models.Model):
             }
         elif self.is_question():
             url = urlresolvers.reverse('question', args=[self.id])
-            if no_slug is False:
+            if thread:
+                url += django_urlquote(slugify(thread.title))
+            elif no_slug is False:
                 url += django_urlquote(self.slug)
             return url
         elif self.is_comment():
             origin_post = self.get_origin_post()
             return '%(url)s?comment=%(id)d#comment-%(id)d' % \
-                {'url': origin_post.get_absolute_url(), 'id':self.id}
+                {'url': origin_post.get_absolute_url(thread=thread), 'id':self.id}
 
         raise NotImplementedError
 
@@ -484,8 +486,8 @@ class Post(models.Model):
         if self.is_comment():
             #todo: implement a custom delete method on these
             #all this should pack into Activity.responses.filter( somehow ).delete()
-            activity_types = const.RESPONSE_ACTIVITY_TYPES_FOR_DISPLAY
-            activity_types += (const.TYPE_ACTIVITY_MENTION,)
+            #activity_types = const.RESPONSE_ACTIVITY_TYPES_FOR_DISPLAY
+            #activity_types += (const.TYPE_ACTIVITY_MENTION,)
             #todo: not very good import in models of other models
             #todo: potentially a circular import
             from askbot.models.user import Activity
@@ -493,7 +495,7 @@ class Post(models.Model):
             activities = Activity.objects.filter(
                                 content_type = comment_content_type,
                                 object_id = self.id,
-                                activity_type__in = activity_types
+                                #activity_type__in = activity_types
                             )
 
             recipients = set()
@@ -537,6 +539,19 @@ class Post(models.Model):
         """returns an abbreviated snippet of the content
         """
         return html_utils.strip_tags(self.html)[:120] + ' ...'
+
+    def set_cached_comments(self, comments):
+        """caches comments in the lifetime of the object
+        does not talk to the actual cache system
+        """
+        self._cached_comments = comments
+    
+    def get_cached_comments(self):
+        try:
+            return self._cached_comments
+        except AttributeError:
+            self._cached_comments = list()
+            return self._cached_comments
 
     def add_comment(self, comment=None, user=None, added_at=None):
         if added_at is None:
@@ -1253,7 +1268,7 @@ class Post(models.Model):
             comment = None,
             revised_at = None
     ):
-        if None in (author, text, comment):
+        if None in (author, text):
             raise Exception('author, text and comment are required arguments')
         rev_no = self.revisions.all().count() + 1
         if comment in (None, ''):

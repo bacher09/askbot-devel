@@ -107,6 +107,8 @@ class TitleField(forms.CharField):
         self.initial = ''
 
     def clean(self, value):
+        if value is None:
+            value = ''
         if len(value) < askbot_settings.MIN_TITLE_LENGTH:
             msg = ungettext_lazy(
                 'title must be > %d character',
@@ -150,6 +152,8 @@ class EditorField(forms.CharField):
         self.initial = ''
 
     def clean(self, value):
+        if value is None:
+            value = ''
         if len(value) < self.min_length:
             msg = ungettext_lazy(
                 self.length_error_template_singular,
@@ -249,7 +253,9 @@ class TagNamesField(forms.CharField):
             #todo - this needs to come from settings
             tagname_re = re.compile(const.TAG_REGEX, re.UNICODE)
             if not tagname_re.search(tag):
-                raise forms.ValidationError(_('use-these-chars-in-tags'))
+                raise forms.ValidationError(_(
+                    'In tags, please use letters, numbers and characters "-+.#"'
+                ))
             #only keep unique tags
             if tag not in entered_tags:
                 entered_tags.append(tag)
@@ -613,6 +619,10 @@ class AskForm(forms.Form, FormWithHideableFields):
             self.cleaned_data['ask_anonymously'] = False
         return self.cleaned_data['ask_anonymously']
 
+ASK_BY_EMAIL_SUBJECT_HELP = _(
+    'Subject line is expected in the format: '
+    '[tag1, tag2, tag3,...] question title'
+)
 
 class AskByEmailForm(forms.Form):
     """:class:`~askbot.forms.AskByEmailForm`
@@ -635,7 +645,12 @@ class AskByEmailForm(forms.Form):
     * ``body_text`` - body of question text - a pass-through, no extra validation
     """
     sender = forms.CharField(max_length = 255)
-    subject = forms.CharField(max_length = 255)
+    subject = forms.CharField(
+        max_length = 255,
+        error_messages = {
+            'required': ASK_BY_EMAIL_SUBJECT_HELP
+        }
+    )
     body_text = QuestionEditorField()
 
     def clean_sender(self):
@@ -677,7 +692,7 @@ class AskByEmailForm(forms.Form):
             title = match.group(2).strip()
             self.cleaned_data['title'] = TitleField().clean(title)
         else:
-            raise forms.ValidationError('could not parse subject line')
+            raise forms.ValidationError(ASK_BY_EMAIL_SUBJECT_HELP)
         return self.cleaned_data['subject']
 
 class AnswerForm(forms.Form):
@@ -686,17 +701,10 @@ class AnswerForm(forms.Form):
     openid = forms.CharField(required=False, max_length=255, widget=forms.TextInput(attrs={'size' : 40, 'class':'openid-input'}))
     user   = forms.CharField(required=False, max_length=255, widget=forms.TextInput(attrs={'size' : 35}))
     email  = forms.CharField(required=False, max_length=255, widget=forms.TextInput(attrs={'size' : 35}))
-    email_notify = EmailNotifyField()
-    def __init__(self, question, user, *args, **kwargs):
+    email_notify = EmailNotifyField(initial = False)
+    def __init__(self, *args, **kwargs):
         super(AnswerForm, self).__init__(*args, **kwargs)
         self.fields['email_notify'].widget.attrs['id'] = 'question-subscribe-updates'
-        if question.wiki and askbot_settings.WIKI_ON:
-            self.fields['wiki'].initial = True
-        if user.is_authenticated():
-            if user in question.thread.followed_by.all():
-                self.fields['email_notify'].initial = True
-                return
-        self.fields['email_notify'].initial = False
 
 class VoteForm(forms.Form):
     """form used in ajax vote view (only comment_upvote so far)
@@ -1089,19 +1097,25 @@ class EditUserEmailFeedsForm(forms.Form):
                 user.followed_threads.clear()
         return changed
 
-class SimpleEmailSubscribeForm(forms.Form):
-    SIMPLE_SUBSCRIBE_CHOICES = (
-        ('y',_('okay, let\'s try!')),
-        ('n',_('no community email please, thanks'))
-    )
-    subscribe = forms.ChoiceField(
-            widget=forms.widgets.RadioSelect,
-            error_messages={'required':_('please choose one of the options above')},
-            choices=SIMPLE_SUBSCRIBE_CHOICES
+class SubscribeForEmailUpdatesField(forms.ChoiceField):
+    """a simple yes or no field to subscribe for email or not"""
+    def __init__(self, **kwargs):
+        kwargs['widget'] = forms.widgets.RadioSelect
+        kwargs['error_messages'] = {
+            'required':_('please choose one of the options above')
+        }
+        kwargs['choices'] = (
+            ('y',_('okay, let\'s try!')),
+            (
+                'n',
+                _('no %(sitename)s email please, thanks') \
+                    % {'sitename': askbot_settings.APP_SHORT_NAME}
+            )
         )
+        super(SubscribeForEmailUpdatesField, self).__init__(**kwargs)
 
-    def __init__(self, *args, **kwargs):
-        super(SimpleEmailSubscribeForm, self).__init__(*args, **kwargs)
+class SimpleEmailSubscribeForm(forms.Form):
+    subscribe = SubscribeForEmailUpdatesField()
 
     def save(self, user=None):
         EFF = EditUserEmailFeedsForm

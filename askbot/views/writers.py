@@ -13,7 +13,6 @@ import sys
 import tempfile
 import time
 import urlparse
-from django.core.files.storage import get_storage_class
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseRedirect, HttpResponse, HttpResponseForbidden, Http404
@@ -31,6 +30,7 @@ from askbot.skins.loaders import render_into_skin
 from askbot.utils import decorators
 from askbot.utils.functions import diff_date
 from askbot.utils import url_utils
+from askbot.utils.file_utils import store_file
 from askbot.templatetags import extra_filters_jinja as template_filters
 from askbot.importers.stackexchange import management as stackexchange#todo: may change
 
@@ -64,6 +64,9 @@ def upload(request):#ajax upload file to a question or answer
 
         # check file type
         f = request.FILES['file-upload']
+        
+        #todo: extension checking should be replaced with mimetype checking
+        #and this must be part of the form validation
         file_extension = os.path.splitext(f.name)[1].lower()
         if not file_extension in settings.ASKBOT_ALLOWED_UPLOAD_FILE_TYPES:
             file_types = "', '".join(settings.ASKBOT_ALLOWED_UPLOAD_FILE_TYPES)
@@ -71,17 +74,8 @@ def upload(request):#ajax upload file to a question or answer
                     {'file_types': file_types}
             raise exceptions.PermissionDenied(msg)
 
-        # generate new file name
-        new_file_name = str(
-                            time.time()
-                        ).replace(
-                            '.', 
-                            str(random.randint(0,100000))
-                        ) + file_extension
-
-        file_storage = get_storage_class()()
-        # use default storage to store file
-        file_storage.save(new_file_name, f)
+        # generate new file name and storage object
+        file_storage, new_file_name, file_url = store_file(f)
         # check file size
         # byte
         size = file_storage.size(new_file_name)
@@ -99,16 +93,6 @@ def upload(request):#ajax upload file to a question or answer
 
     if error == '':
         result = 'Good'
-        file_url = file_storage.url(new_file_name)
-        parsed_url = urlparse.urlparse(file_url)
-        file_url = urlparse.urlunparse(
-            urlparse.ParseResult(
-                parsed_url.scheme, 
-                parsed_url.netloc,
-                parsed_url.path,
-                '', '', ''
-            )
-        )
     else:
         result = ''
         file_url = ''
@@ -201,7 +185,13 @@ def import_data(request):
 
 #@login_required #actually you can post anonymously, but then must register
 @csrf.csrf_protect
-@decorators.check_authorization_to_post(_('Please log in to ask questions'))
+@decorators.check_authorization_to_post(_(
+    "<span class=\"strong big\">You are welcome to start submitting your question "
+    "anonymously</span>. When you submit the post, you will be redirected to the "
+    "login/signup page. Your question will be saved in the current session and "
+    "will be published after you log in. Login/signup process is very simple. "
+    "Login takes about 30 seconds, initial signup takes a minute or less."
+))
 @decorators.check_spam('text')
 def ask(request):#view used to ask a new question
     """a view to ask a new question
@@ -210,8 +200,8 @@ def ask(request):#view used to ask a new question
     user can start posting a question anonymously but then
     must login/register in order for the question go be shown
     """
-    if request.method == "POST":
-        form = forms.AskForm(request.POST)
+    form = forms.AskForm(request.REQUEST)
+    if request.method == 'POST':
         if form.is_valid():
             timestamp = datetime.datetime.now()
             title = form.cleaned_data['title']
@@ -251,10 +241,17 @@ def ask(request):#view used to ask a new question
                     ip_addr = request.META['REMOTE_ADDR'],
                 )
                 return HttpResponseRedirect(url_utils.get_login_url())
-    else:
+
+    if request.method == 'GET':
         form = forms.AskForm()
-        if 'title' in request.GET: # prepopulate title (usually from search query on main page)
-            form.initial['title'] = request.GET['title']
+
+    form.initial = {
+        'title': request.REQUEST.get('title', ''),
+        'text': request.REQUEST.get('text', ''),
+        'tags': request.REQUEST.get('tags', ''),
+        'wiki': request.REQUEST.get('wiki', False),
+        'is_anonymous': request.REQUEST.get('is_anonymous', False),
+    }
 
     data = {
         'active_tab': 'ask',
@@ -426,7 +423,7 @@ def edit_answer(request, id):
                     # Replace with those from the selected revision
                     rev = revision_form.cleaned_data['revision']
                     selected_revision = models.PostRevision.objects.answer_revisions().get(
-                                                            answer = answer,
+                                                            post = answer,
                                                             revision = rev
                                                         )
                     form = forms.EditAnswerForm(answer, selected_revision)
@@ -478,7 +475,7 @@ def answer(request, id):#process a new answer
     """
     question = get_object_or_404(models.Post, post_type='question', id=id)
     if request.method == "POST":
-        form = forms.AnswerForm(question, request.user, request.POST)
+        form = forms.AnswerForm(request.POST)
         if form.is_valid():
             wiki = form.cleaned_data['wiki']
             text = form.cleaned_data['text']
@@ -635,6 +632,7 @@ def delete_comment(request):
             #attn: recalc denormalized field
             parent.comment_count = parent.comment_count - 1
             parent.save()
+            parent.thread.invalidate_cached_data()
 
             return __generate_comments_json(parent, request.user)
 
